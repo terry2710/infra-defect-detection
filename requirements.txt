@@ -1,0 +1,8 @@
+# Phase 1 (data download/convert/EDA) dependencies only.
+# Phase 2+ will add ultralytics, torch, etc. - added when that phase starts, not pre-installed now
+# so `pip install -r requirements.txt` stays fast for anyone just running the phase-1 scripts.
+pandas>=2.0
+Pillow>=10.0
+matplotlib>=3.7
+numpy>=1.24
+tabulate>=0.9
