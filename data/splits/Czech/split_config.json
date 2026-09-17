@@ -1,0 +1,11 @@
+{
+  "country": "Czech",
+  "seed": 42,
+  "train_frac": 0.7,
+  "val_frac": 0.15,
+  "test_frac": 0.15,
+  "n_total": 1072,
+  "n_train": 750,
+  "n_val": 160,
+  "n_test": 162
+}

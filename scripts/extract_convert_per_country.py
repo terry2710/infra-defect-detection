@@ -103,6 +103,12 @@ def main(argv=None):
                          help="don't delete the combined zip early (once all countries are read into "
                               "memory) or at the end - default is to delete it early, which is what "
                               "makes the largest country (Norway, ~9.9GB) fit under Kaggle's quota")
+    parser.add_argument("--countries", nargs="+", default=None,
+                         help="only extract+convert these countries (default: all 7). Added for phase 2, "
+                              "which only needs a single country (e.g. --countries Czech) - still reads "
+                              "the whole combined zip's member list, but only pulls the requested "
+                              "countries' bytes into memory, so the early-delete-the-zip step still runs "
+                              "and disk usage stays tiny.")
     args = parser.parse_args(argv)
 
     data_dir = Path(args.data_dir)
@@ -148,6 +154,16 @@ def main(argv=None):
             print(f"  {country}: {info.filename} ({_format_bytes(info.file_size)})")
         else:
             print(f"  {country}: NOT FOUND")
+
+    if args.countries:
+        missing = [c for c in args.countries if c not in by_country]
+        if missing:
+            print(f"\n--countries requested {missing} but the combined zip doesn't have (a match for) "
+                  f"{'them' if len(missing) > 1 else 'it'} - check spelling against COUNTRY_ALIASES.", file=sys.stderr)
+            return 1
+        by_country = {c: by_country[c] for c in args.countries}
+        print(f"\n--countries set: only extracting {list(by_country.keys())} (out of all 7 found above)")
+
     if unmatched:
         print(f"\n  {len(unmatched)} entries matched no known country alias:")
         for n in unmatched:
