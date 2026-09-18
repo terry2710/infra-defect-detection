@@ -1,0 +1,260 @@
+{
+  "model": "yolo11n.pt",
+  "seed": 42,
+  "epochs": 100,
+  "imgsz": 640,
+  "batch": 16,
+  "train_seconds": 8100.8,
+  "split_config": {
+    "train_countries": [
+      "Japan",
+      "India",
+      "Czech"
+    ],
+    "test_countries": [
+      "Norway",
+      "United_States",
+      "China_MotorBike",
+      "China_Drone"
+    ],
+    "seed": 42,
+    "train_frac": 0.7,
+    "val_frac": 0.15,
+    "in_domain_test_frac": 0.15,
+    "n_source_total": 12195,
+    "n_train": 8536,
+    "n_val": 1829,
+    "n_in_domain_test": 1830,
+    "per_split_country_counts": {
+      "train": {
+        "India": 2280,
+        "Japan": 5483,
+        "Czech": 773
+      },
+      "val": {
+        "Czech": 154,
+        "Japan": 1224,
+        "India": 451
+      },
+      "in_domain_test": {
+        "Japan": 1193,
+        "India": 492,
+        "Czech": 145
+      }
+    },
+    "target_country_counts": {
+      "Norway": 2914,
+      "United_States": 4805,
+      "China_MotorBike": 1934,
+      "China_Drone": 1919
+    }
+  },
+  "domains": {
+    "in_domain": {
+      "overall": {
+        "precision_mean": 0.5628664820639446,
+        "recall_mean": 0.5003400833026941,
+        "map50": 0.5197943813749201,
+        "map50_95": 0.23081411459034742,
+        "map75": 0.16562235891506005
+      },
+      "per_class": [
+        {
+          "class": "longitudinal_crack",
+          "precision": 0.5620638852261749,
+          "recall": 0.45168067226890757,
+          "ap50": 0.46887736370856603,
+          "ap50_95": 0.20355690033194715
+        },
+        {
+          "class": "transverse_crack",
+          "precision": 0.5065230683603912,
+          "recall": 0.41517123143371776,
+          "ap50": 0.41481733716401004,
+          "ap50_95": 0.16294441908923
+        },
+        {
+          "class": "alligator_crack",
+          "precision": 0.6312023215273836,
+          "recall": 0.6562974203338392,
+          "ap50": 0.6873365526614508,
+          "ap50_95": 0.34611171961051607
+        },
+        {
+          "class": "pothole",
+          "precision": 0.5516766531418287,
+          "recall": 0.4782110091743119,
+          "ap50": 0.5081462719656537,
+          "ap50_95": 0.21064341932969657
+        }
+      ],
+      "n_images": 1830,
+      "run_dir": "/kaggle/working/runs/phase3/eval/in_domain"
+    },
+    "Norway": {
+      "overall": {
+        "precision_mean": 0.2180276291313287,
+        "recall_mean": 0.11655986337634036,
+        "map50": 0.06856469611489562,
+        "map50_95": 0.026070416290697406,
+        "map75": 0.016952474893705036
+      },
+      "per_class": [
+        {
+          "class": "longitudinal_crack",
+          "precision": 0.3931234635470603,
+          "recall": 0.13465577596266046,
+          "ap50": 0.11688576186187827,
+          "ap50_95": 0.048127334622424765
+        },
+        {
+          "class": "transverse_crack",
+          "precision": 0.2577112955504296,
+          "recall": 0.08268218135270158,
+          "ap50": 0.04863121310784868,
+          "ap50_95": 0.011447478826686513
+        },
+        {
+          "class": "alligator_crack",
+          "precision": 0.16955429757579626,
+          "recall": 0.1794871794871795,
+          "ap50": 0.09419475306328384,
+          "ap50_95": 0.04076090181286305
+        },
+        {
+          "class": "pothole",
+          "precision": 0.05172145985202867,
+          "recall": 0.06941431670281996,
+          "ap50": 0.014547056426571694,
+          "ap50_95": 0.003945949900815294
+        }
+      ],
+      "n_images": 2914,
+      "run_dir": "/kaggle/working/runs/phase3/eval/Norway"
+    },
+    "United_States": {
+      "overall": {
+        "precision_mean": 0.47308944072965936,
+        "recall_mean": 0.46086070991461764,
+        "map50": 0.4316184874365164,
+        "map50_95": 0.2268086288088454,
+        "map75": 0.21032639932032107
+      },
+      "per_class": [
+        {
+          "class": "longitudinal_crack",
+          "precision": 0.6279340720366925,
+          "recall": 0.577925925925926,
+          "ap50": 0.5988099965340915,
+          "ap50_95": 0.31303177006420274
+        },
+        {
+          "class": "transverse_crack",
+          "precision": 0.5812880889677597,
+          "recall": 0.40455235204855844,
+          "ap50": 0.4429428462546672,
+          "ap50_95": 0.2002346556708038
+        },
+        {
+          "class": "alligator_crack",
+          "precision": 0.5302647913709114,
+          "recall": 0.6091127098321343,
+          "ap50": 0.5523484002270886,
+          "ap50_95": 0.3235175803452977
+        },
+        {
+          "class": "pothole",
+          "precision": 0.15287081054327362,
+          "recall": 0.2518518518518518,
+          "ap50": 0.13237270673021834,
+          "ap50_95": 0.07045050915507728
+        }
+      ],
+      "n_images": 4805,
+      "run_dir": "/kaggle/working/runs/phase3/eval/United_States"
+    },
+    "China_MotorBike": {
+      "overall": {
+        "precision_mean": 0.3327357776195578,
+        "recall_mean": 0.29480412858064664,
+        "map50": 0.24291460365855974,
+        "map50_95": 0.09610699841562112,
+        "map75": 0.06103300248426877
+      },
+      "per_class": [
+        {
+          "class": "longitudinal_crack",
+          "precision": 0.45287228247910666,
+          "recall": 0.20612397311426436,
+          "ap50": 0.22062006784521299,
+          "ap50_95": 0.08011130054637293
+        },
+        {
+          "class": "transverse_crack",
+          "precision": 0.3605820871885349,
+          "recall": 0.41882560457341,
+          "ap50": 0.311040118677226,
+          "ap50_95": 0.10421955236252427
+        },
+        {
+          "class": "alligator_crack",
+          "precision": 0.43834816425746137,
+          "recall": 0.41809672386895474,
+          "ap50": 0.4154815800531677,
+          "ap50_95": 0.1947552781330147
+        },
+        {
+          "class": "pothole",
+          "precision": 0.0791405765531284,
+          "recall": 0.13617021276595745,
+          "ap50": 0.02451664805863226,
+          "ap50_95": 0.005341862620572587
+        }
+      ],
+      "n_images": 1934,
+      "run_dir": "/kaggle/working/runs/phase3/eval/China_MotorBike"
+    },
+    "China_Drone": {
+      "overall": {
+        "precision_mean": 0.3166349919927828,
+        "recall_mean": 0.29360060970536106,
+        "map50": 0.2267830575937676,
+        "map50_95": 0.09222482453375502,
+        "map75": 0.05698370869952693
+      },
+      "per_class": [
+        {
+          "class": "longitudinal_crack",
+          "precision": 0.4286266036990129,
+          "recall": 0.1185133239831697,
+          "ap50": 0.1541370243542447,
+          "ap50_95": 0.05010696878477418
+        },
+        {
+          "class": "transverse_crack",
+          "precision": 0.5038619481884556,
+          "recall": 0.42214834176104626,
+          "ap50": 0.38654706097918967,
+          "ap50_95": 0.14571138962678257
+        },
+        {
+          "class": "alligator_crack",
+          "precision": 0.1985299238733686,
+          "recall": 0.15699658703071673,
+          "ap50": 0.11282492754178376,
+          "ap50_95": 0.04878613671393196
+        },
+        {
+          "class": "pothole",
+          "precision": 0.1355214922102938,
+          "recall": 0.47674418604651164,
+          "ap50": 0.25362321749985234,
+          "ap50_95": 0.1242948030095314
+        }
+      ],
+      "n_images": 1919,
+      "run_dir": "/kaggle/working/runs/phase3/eval/China_Drone"
+    }
+  },
+  "train_run_dir": "/kaggle/working/runs/phase3/cross_country_baseline"
+}

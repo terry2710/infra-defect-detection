@@ -1,0 +1,44 @@
+{
+  "train_countries": [
+    "Japan",
+    "India",
+    "Czech"
+  ],
+  "test_countries": [
+    "Norway",
+    "United_States",
+    "China_MotorBike",
+    "China_Drone"
+  ],
+  "seed": 42,
+  "train_frac": 0.7,
+  "val_frac": 0.15,
+  "in_domain_test_frac": 0.15,
+  "n_source_total": 12195,
+  "n_train": 8536,
+  "n_val": 1829,
+  "n_in_domain_test": 1830,
+  "per_split_country_counts": {
+    "train": {
+      "India": 2280,
+      "Japan": 5483,
+      "Czech": 773
+    },
+    "val": {
+      "Czech": 154,
+      "Japan": 1224,
+      "India": 451
+    },
+    "in_domain_test": {
+      "Japan": 1193,
+      "India": 492,
+      "Czech": 145
+    }
+  },
+  "target_country_counts": {
+    "Norway": 2914,
+    "United_States": 4805,
+    "China_MotorBike": 1934,
+    "China_Drone": 1919
+  }
+}

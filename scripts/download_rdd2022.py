@@ -30,11 +30,32 @@ The zip's exact internal folder layout was not independently verified before wri
 environment - see reorganize_countries() below for how this script copes with that uncertainty at
 extraction time instead of assuming a fixed layout).
 
-Uses aria2c for a multi-connection (segmented) download when it's installed - `brew install aria2`
-on macOS - since a single-connection stream to FigShare's S3-backed CDN can be far slower than the
-link's actual bandwidth for a file this size (observed: ~700KB/s single-connection vs several MB/s
-with 16 parallel connections). Falls back to a plain single-connection download with a one-time hint
-if aria2c isn't found.
+NOTE (2026-09-17, Kaggle handoff): on the original Mac/home-network run, aria2c's multi-connection
+mode was confirmed to get an immediate HTTP 403 from FigShare's CDN regardless of connection count
+(1, 4, or 16) - the CDN appears to reject Range/segmented requests outright, not just high
+concurrency. So on Kaggle this will (correctly) fall back to the plain single-connection urllib
+path every time; that's expected, not a bug - the win here is Kaggle's raw single-connection
+bandwidth to this host, not multi-connection parallelism.
+
+NOTE (2026-09-17, Kaggle dataset cache): every phase that needs a fresh Kaggle kernel re-downloads
+this same ~12.35GB zip from scratch, since /kaggle/working doesn't persist across kernel sessions -
+phase 2 confirmed this the hard way. To stop paying that cost every phase, a one-time "cache
+builder" kernel downloads + MD5-verifies the zip once and its output becomes a private Kaggle
+Dataset; every later notebook just adds that Dataset as an input.
+
+UPDATE (2026-09-17, same day): the cache Dataset did NOT turn out to contain a re-downloadable zip.
+Kaggle's "New Dataset from notebook output" flow recursively auto-extracts every .zip file it finds
+in the output - not just the outer combined zip, but the 7 per-country zips nested inside it too -
+so the Dataset actually ended up holding a fully-extracted, ready-to-convert per-country directory
+tree (confirmed by browsing the Dataset's Data Explorer: data/zips/RDD2022_released_through_CRDDC2022/
+RDD2022/<Country>/<Country>/{train,test}/... for all 7 countries, ~85.8k files, 13.83GB). That's
+actually a BETTER cache than a zip would have been - it skips the extraction step too, not just the
+download - so find_kaggle_cached_extracted_countries() below is checked FIRST and, when it covers
+every requested country, this script skips straight to "done" (no download, no MD5 verify, nothing -
+extract_convert_per_country.py finds and uses the same cache independently). find_kaggle_cached_zip()
+is kept as a fallback for a cache Dataset built some other way (e.g. zip auto-extraction turned off),
+and the plain FigShare download remains the final fallback - so this script still works unchanged
+off-Kaggle, or on a fresh Kaggle account with no cache Dataset set up yet.
 
 Usage:
     python scripts/download_rdd2022.py                        # download + extract + link all found countries
@@ -148,6 +169,64 @@ def download_one(url, dest_path, retries=3, connections=16):
               "multi-connection download instead.")
 
     _download_urllib(url, dest_path, retries=retries)
+
+
+def find_kaggle_cached_zip():
+    """Look for a pre-cached copy of the combined zip under /kaggle/input/ - a private Kaggle
+    Dataset added as this notebook's input, built once by a "cache builder" kernel that just runs
+    `download_rdd2022.py --skip-extract` and turns its output into a Dataset (see the module
+    docstring's 2026-09-17 note). Kaggle mounts every added dataset read-only at
+    /kaggle/input/<dataset-slug>/, so this searches by filename across ALL mounted datasets rather
+    than assuming a specific slug - the cache dataset can be renamed, or other unrelated datasets
+    can be mounted alongside it, without breaking this. Returns None (not an error) when
+    /kaggle/input doesn't exist at all (i.e. not running on Kaggle) or no dataset has the file.
+    """
+    kaggle_input = Path("/kaggle/input")
+    if not kaggle_input.is_dir():
+        return None
+    matches = list(kaggle_input.rglob(FIGSHARE_ZIP_NAME))
+    if not matches:
+        return None
+    if len(matches) > 1:
+        print(f"  NOTE: found {len(matches)} copies of {FIGSHARE_ZIP_NAME} under /kaggle/input/, "
+              f"using the first: {matches[0]}")
+    return matches[0]
+
+
+def find_kaggle_cached_extracted_countries(root=None):
+    """Look for a pre-EXTRACTED per-country RDD2022 tree under /kaggle/input/ - what the cache
+    Dataset actually contains (see the module docstring's 2026-09-17 UPDATE). Kaggle's "New Dataset
+    from notebook output" recursively auto-unzips every .zip it finds in the output, including zips
+    nested inside other zips - so the cache-builder notebook's output (which only ever contained the
+    still-zipped combined archive on disk) turned into a fully-extracted directory tree by the time
+    it became a Dataset: both the outer combined zip AND all 7 nested per-country zips got expanded
+    in place, not just the outer one. That's a BETTER cache than a re-downloadable zip (skips
+    extraction too, not just download), so this is checked before find_kaggle_cached_zip() above.
+
+    Returns {country: path} for every COUNTRY_ALIASES key found as a non-empty directory somewhere
+    under root (default /kaggle/input). Does ONE pass over the whole mounted-input tree rather than
+    one rglob per country - /kaggle/input can hold 80k+ files once a dataset like this is extracted,
+    so scanning it 7x over would be wasteful. Returns {} (not an error) when root doesn't exist (e.g.
+    off-Kaggle) or nothing matches. `root` is overridable for self-testing without touching the real
+    /kaggle/input.
+    """
+    kaggle_input = Path(root) if root is not None else Path("/kaggle/input")
+    if not kaggle_input.is_dir():
+        return {}
+    found = {}
+    for path in kaggle_input.rglob("*"):
+        if len(found) == len(COUNTRY_ALIASES):
+            break
+        if path.name not in COUNTRY_ALIASES or path.name in found:
+            continue
+        if not path.is_dir():
+            continue
+        try:
+            if any(path.iterdir()):
+                found[path.name] = path
+        except OSError:
+            continue
+    return found
 
 
 def _download_urllib(url, dest_path, retries=3):
@@ -307,14 +386,41 @@ def main(argv=None):
     elif "China" in countries:
         countries = [c for c in countries if c != "China"] + ["China_MotorBike", "China_Drone"]
 
+    cached_extracted = find_kaggle_cached_extracted_countries()
+    missing_from_extracted_cache = [c for c in countries if c not in cached_extracted]
+    if cached_extracted and not missing_from_extracted_cache:
+        print(f"Found all {len(countries)} requested countries already pre-extracted under "
+              f"/kaggle/input/ (see the module docstring's 2026-09-17 UPDATE) - skipping the download "
+              f"entirely, no zip needed at all:")
+        for country in countries:
+            print(f"  {country}: {cached_extracted[country]}")
+        print("\nDone (nothing downloaded/extracted here). Next: python scripts/extract_convert_per_country.py "
+              "will independently find and use this same cache.")
+        return 0
+    elif cached_extracted:
+        print(f"NOTE: found a partial pre-extracted cache under /kaggle/input/ ({sorted(cached_extracted)}) "
+              f"but it's missing {missing_from_extracted_cache} - falling back to the normal "
+              f"download/zip-cache path below for all requested countries (not mixing sources).")
+
     data_dir = Path(args.data_dir)
     zips_dir = data_dir / "zips"
     extract_root = data_dir / "raw" / "_extracted_all"
     raw_dir = data_dir / "raw"
 
     zip_path = zips_dir / FIGSHARE_ZIP_NAME
-    print(f"Downloading combined RDD2022 archive (~12.35GB) from FigShare into {zip_path}")
-    download_one(FIGSHARE_URL, zip_path, connections=args.connections)
+    if zip_path.exists() and zip_path.stat().st_size > 0:
+        print(f"Already have {zip_path} ({_format_bytes(zip_path.stat().st_size)}), skipping download/cache-copy")
+    else:
+        cached = find_kaggle_cached_zip()
+        if cached:
+            print(f"Found a pre-cached copy at {cached} (Kaggle input dataset) - copying into "
+                  f"{zip_path} instead of downloading ~12.35GB from FigShare again")
+            zips_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(cached, zip_path)
+            print(f"  copied {_format_bytes(zip_path.stat().st_size)}")
+        else:
+            print(f"Downloading combined RDD2022 archive (~12.35GB) from FigShare into {zip_path}")
+            download_one(FIGSHARE_URL, zip_path, connections=args.connections)
 
     if not verify_md5(zip_path, FIGSHARE_MD5):
         print("\nAborting - downloaded file failed MD5 verification. Delete the zip and re-run.")

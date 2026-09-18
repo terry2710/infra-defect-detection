@@ -1,0 +1,350 @@
+{
+  "conf": 0.25,
+  "iou": 0.5,
+  "countries": {
+    "Norway": {
+      "totals": {
+        "n_images": 2914,
+        "total_gt": 11229,
+        "total_tp": 1013,
+        "total_fn": 10182,
+        "total_fp": 1552,
+        "total_wrong_class": 34,
+        "mean_failure_score": 4.04,
+        "mean_brightness": 144.2
+      },
+      "top_images": [
+        {
+          "image": "/kaggle/working/data/processed/Norway/images/Norway__Norway_003110.jpg",
+          "n_gt": 44,
+          "n_pred": 5,
+          "tp": 0,
+          "fn": 44,
+          "fp": 5,
+          "wrong_class": 0,
+          "failure_score": 49,
+          "brightness": 146.2,
+          "annotated_path": "/kaggle/working/runs/phase3/failures/Norway/rank01_score49_Norway__Norway_003110.jpg"
+        },
+        {
+          "image": "/kaggle/working/data/processed/Norway/images/Norway__Norway_007384.jpg",
+          "n_gt": 34,
+          "n_pred": 4,
+          "tp": 0,
+          "fn": 34,
+          "fp": 4,
+          "wrong_class": 0,
+          "failure_score": 38,
+          "brightness": 155.6,
+          "annotated_path": "/kaggle/working/runs/phase3/failures/Norway/rank02_score38_Norway__Norway_007384.jpg"
+        },
+        {
+          "image": "/kaggle/working/data/processed/Norway/images/Norway__Norway_000633.jpg",
+          "n_gt": 29,
+          "n_pred": 3,
+          "tp": 0,
+          "fn": 29,
+          "fp": 3,
+          "wrong_class": 0,
+          "failure_score": 32,
+          "brightness": 164.0,
+          "annotated_path": "/kaggle/working/runs/phase3/failures/Norway/rank03_score32_Norway__Norway_000633.jpg"
+        },
+        {
+          "image": "/kaggle/working/data/processed/Norway/images/Norway__Norway_006556.jpg",
+          "n_gt": 31,
+          "n_pred": 3,
+          "tp": 1,
+          "fn": 30,
+          "fp": 2,
+          "wrong_class": 0,
+          "failure_score": 32,
+          "brightness": 126.7,
+          "annotated_path": "/kaggle/working/runs/phase3/failures/Norway/rank04_score32_Norway__Norway_006556.jpg"
+        },
+        {
+          "image": "/kaggle/working/data/processed/Norway/images/Norway__Norway_003699.jpg",
+          "n_gt": 29,
+          "n_pred": 2,
+          "tp": 0,
+          "fn": 29,
+          "fp": 2,
+          "wrong_class": 0,
+          "failure_score": 31,
+          "brightness": 133.9,
+          "annotated_path": "/kaggle/working/runs/phase3/failures/Norway/rank05_score31_Norway__Norway_003699.jpg"
+        },
+        {
+          "image": "/kaggle/working/data/processed/Norway/images/Norway__Norway_000922.jpg",
+          "n_gt": 30,
+          "n_pred": 2,
+          "tp": 1,
+          "fn": 29,
+          "fp": 1,
+          "wrong_class": 0,
+          "failure_score": 30,
+          "brightness": 165.1,
+          "annotated_path": "/kaggle/working/runs/phase3/failures/Norway/rank06_score30_Norway__Norway_000922.jpg"
+        }
+      ]
+    },
+    "United_States": {
+      "totals": {
+        "n_images": 4805,
+        "total_gt": 11014,
+        "total_tp": 5447,
+        "total_fn": 5285,
+        "total_fp": 3630,
+        "total_wrong_class": 282,
+        "mean_failure_score": 1.91,
+        "mean_brightness": 153.9
+      },
+      "top_images": [
+        {
+          "image": "/kaggle/working/data/processed/United_States/images/United_States__United_States_000458.jpg",
+          "n_gt": 8,
+          "n_pred": 6,
+          "tp": 2,
+          "fn": 6,
+          "fp": 4,
+          "wrong_class": 0,
+          "failure_score": 10,
+          "brightness": 177.5,
+          "annotated_path": "/kaggle/working/runs/phase3/failures/United_States/rank01_score10_United_States__United_States_000458.jpg"
+        },
+        {
+          "image": "/kaggle/working/data/processed/United_States/images/United_States__United_States_001904.jpg",
+          "n_gt": 9,
+          "n_pred": 1,
+          "tp": 0,
+          "fn": 9,
+          "fp": 1,
+          "wrong_class": 0,
+          "failure_score": 10,
+          "brightness": 168.4,
+          "annotated_path": "/kaggle/working/runs/phase3/failures/United_States/rank02_score10_United_States__United_States_001904.jpg"
+        },
+        {
+          "image": "/kaggle/working/data/processed/United_States/images/United_States__United_States_002415.jpg",
+          "n_gt": 6,
+          "n_pred": 4,
+          "tp": 0,
+          "fn": 6,
+          "fp": 4,
+          "wrong_class": 0,
+          "failure_score": 10,
+          "brightness": 177.1,
+          "annotated_path": "/kaggle/working/runs/phase3/failures/United_States/rank03_score10_United_States__United_States_002415.jpg"
+        },
+        {
+          "image": "/kaggle/working/data/processed/United_States/images/United_States__United_States_000166.jpg",
+          "n_gt": 5,
+          "n_pred": 4,
+          "tp": 0,
+          "fn": 5,
+          "fp": 4,
+          "wrong_class": 0,
+          "failure_score": 9,
+          "brightness": 162.8,
+          "annotated_path": "/kaggle/working/runs/phase3/failures/United_States/rank04_score9_United_States__United_States_000166.jpg"
+        },
+        {
+          "image": "/kaggle/working/data/processed/United_States/images/United_States__United_States_000678.jpg",
+          "n_gt": 4,
+          "n_pred": 9,
+          "tp": 2,
+          "fn": 2,
+          "fp": 7,
+          "wrong_class": 0,
+          "failure_score": 9,
+          "brightness": 171.1,
+          "annotated_path": "/kaggle/working/runs/phase3/failures/United_States/rank05_score9_United_States__United_States_000678.jpg"
+        },
+        {
+          "image": "/kaggle/working/data/processed/United_States/images/United_States__United_States_001877.jpg",
+          "n_gt": 8,
+          "n_pred": 3,
+          "tp": 1,
+          "fn": 7,
+          "fp": 2,
+          "wrong_class": 0,
+          "failure_score": 9,
+          "brightness": 161.0,
+          "annotated_path": "/kaggle/working/runs/phase3/failures/United_States/rank06_score9_United_States__United_States_001877.jpg"
+        }
+      ]
+    },
+    "China_MotorBike": {
+      "totals": {
+        "n_images": 1934,
+        "total_gt": 4650,
+        "total_tp": 886,
+        "total_fn": 3724,
+        "total_fp": 1041,
+        "total_wrong_class": 40,
+        "mean_failure_score": 2.48,
+        "mean_brightness": 150.8
+      },
+      "top_images": [
+        {
+          "image": "/kaggle/working/data/processed/China_MotorBike/images/China_MotorBike__China_MotorBike_001610.jpg",
+          "n_gt": 13,
+          "n_pred": 4,
+          "tp": 1,
+          "fn": 12,
+          "fp": 3,
+          "wrong_class": 0,
+          "failure_score": 15,
+          "brightness": 150.8,
+          "annotated_path": "/kaggle/working/runs/phase3/failures/China_MotorBike/rank01_score15_China_MotorBike__China_MotorBike_001610.jpg"
+        },
+        {
+          "image": "/kaggle/working/data/processed/China_MotorBike/images/China_MotorBike__China_MotorBike_000419.jpg",
+          "n_gt": 12,
+          "n_pred": 2,
+          "tp": 0,
+          "fn": 12,
+          "fp": 2,
+          "wrong_class": 0,
+          "failure_score": 14,
+          "brightness": 145.6,
+          "annotated_path": "/kaggle/working/runs/phase3/failures/China_MotorBike/rank02_score14_China_MotorBike__China_MotorBike_000419.jpg"
+        },
+        {
+          "image": "/kaggle/working/data/processed/China_MotorBike/images/China_MotorBike__China_MotorBike_000801.jpg",
+          "n_gt": 12,
+          "n_pred": 2,
+          "tp": 0,
+          "fn": 12,
+          "fp": 2,
+          "wrong_class": 0,
+          "failure_score": 14,
+          "brightness": 150.3,
+          "annotated_path": "/kaggle/working/runs/phase3/failures/China_MotorBike/rank03_score14_China_MotorBike__China_MotorBike_000801.jpg"
+        },
+        {
+          "image": "/kaggle/working/data/processed/China_MotorBike/images/China_MotorBike__China_MotorBike_000151.jpg",
+          "n_gt": 13,
+          "n_pred": 4,
+          "tp": 2,
+          "fn": 11,
+          "fp": 2,
+          "wrong_class": 0,
+          "failure_score": 13,
+          "brightness": 150.4,
+          "annotated_path": "/kaggle/working/runs/phase3/failures/China_MotorBike/rank04_score13_China_MotorBike__China_MotorBike_000151.jpg"
+        },
+        {
+          "image": "/kaggle/working/data/processed/China_MotorBike/images/China_MotorBike__China_MotorBike_001532.jpg",
+          "n_gt": 14,
+          "n_pred": 1,
+          "tp": 1,
+          "fn": 13,
+          "fp": 0,
+          "wrong_class": 0,
+          "failure_score": 13,
+          "brightness": 144.9,
+          "annotated_path": "/kaggle/working/runs/phase3/failures/China_MotorBike/rank05_score13_China_MotorBike__China_MotorBike_001532.jpg"
+        },
+        {
+          "image": "/kaggle/working/data/processed/China_MotorBike/images/China_MotorBike__China_MotorBike_000296.jpg",
+          "n_gt": 10,
+          "n_pred": 2,
+          "tp": 0,
+          "fn": 10,
+          "fp": 2,
+          "wrong_class": 0,
+          "failure_score": 12,
+          "brightness": 151.2,
+          "annotated_path": "/kaggle/working/runs/phase3/failures/China_MotorBike/rank06_score12_China_MotorBike__China_MotorBike_000296.jpg"
+        }
+      ]
+    },
+    "China_Drone": {
+      "totals": {
+        "n_images": 1919,
+        "total_gt": 3068,
+        "total_tp": 462,
+        "total_fn": 2572,
+        "total_fp": 525,
+        "total_wrong_class": 34,
+        "mean_failure_score": 1.63,
+        "mean_brightness": 143.9
+      },
+      "top_images": [
+        {
+          "image": "/kaggle/working/data/processed/China_Drone/images/China_Drone__China_Drone_000861.jpg",
+          "n_gt": 9,
+          "n_pred": 0,
+          "tp": 0,
+          "fn": 9,
+          "fp": 0,
+          "wrong_class": 0,
+          "failure_score": 9,
+          "brightness": 115.2,
+          "annotated_path": "/kaggle/working/runs/phase3/failures/China_Drone/rank01_score9_China_Drone__China_Drone_000861.jpg"
+        },
+        {
+          "image": "/kaggle/working/data/processed/China_Drone/images/China_Drone__China_Drone_001051.jpg",
+          "n_gt": 2,
+          "n_pred": 6,
+          "tp": 0,
+          "fn": 2,
+          "fp": 6,
+          "wrong_class": 0,
+          "failure_score": 8,
+          "brightness": 173.7,
+          "annotated_path": "/kaggle/working/runs/phase3/failures/China_Drone/rank02_score8_China_Drone__China_Drone_001051.jpg"
+        },
+        {
+          "image": "/kaggle/working/data/processed/China_Drone/images/China_Drone__China_Drone_000419.jpg",
+          "n_gt": 7,
+          "n_pred": 0,
+          "tp": 0,
+          "fn": 7,
+          "fp": 0,
+          "wrong_class": 0,
+          "failure_score": 7,
+          "brightness": 167.4,
+          "annotated_path": "/kaggle/working/runs/phase3/failures/China_Drone/rank03_score7_China_Drone__China_Drone_000419.jpg"
+        },
+        {
+          "image": "/kaggle/working/data/processed/China_Drone/images/China_Drone__China_Drone_000829.jpg",
+          "n_gt": 4,
+          "n_pred": 3,
+          "tp": 0,
+          "fn": 4,
+          "fp": 3,
+          "wrong_class": 0,
+          "failure_score": 7,
+          "brightness": 149.7,
+          "annotated_path": "/kaggle/working/runs/phase3/failures/China_Drone/rank04_score7_China_Drone__China_Drone_000829.jpg"
+        },
+        {
+          "image": "/kaggle/working/data/processed/China_Drone/images/China_Drone__China_Drone_001340.jpg",
+          "n_gt": 6,
+          "n_pred": 1,
+          "tp": 0,
+          "fn": 6,
+          "fp": 1,
+          "wrong_class": 0,
+          "failure_score": 7,
+          "brightness": 133.4,
+          "annotated_path": "/kaggle/working/runs/phase3/failures/China_Drone/rank05_score7_China_Drone__China_Drone_001340.jpg"
+        },
+        {
+          "image": "/kaggle/working/data/processed/China_Drone/images/China_Drone__China_Drone_002070.jpg",
+          "n_gt": 6,
+          "n_pred": 1,
+          "tp": 0,
+          "fn": 6,
+          "fp": 1,
+          "wrong_class": 0,
+          "failure_score": 7,
+          "brightness": 151.3,
+          "annotated_path": "/kaggle/working/runs/phase3/failures/China_Drone/rank06_score7_China_Drone__China_Drone_002070.jpg"
+        }
+      ]
+    }
+  }
+}
