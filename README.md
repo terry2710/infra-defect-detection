@@ -178,6 +178,63 @@ and, when the Dataset is mounted, convert straight from it - skipping the FigSha
 in-memory zip extraction entirely - falling back to the original path unchanged when no cache is
 present.
 
+## Phase 4: transformer detector and architecture comparison
+
+```bash
+python scripts/train_transformer_baseline.py \
+    --data data/splits/Czech/dataset.yaml \
+    --model rtdetr-l.pt \
+    --epochs 100 \
+    --imgsz 640 \
+    --batch 8 \
+    --seed 42
+```
+
+Phase 2 established a CNN baseline. Phase 4 changes the model architecture and nothing else, to
+answer whether a transformer detector is actually better on this data - the question behind the
+"architecture breadth beyond CNN" interview feedback.
+
+`train_transformer_baseline.py` fine-tunes RT-DETR (Ultralytics' real-time DETR) on the *same*
+Czech split phase 2 used, evaluates on the same held-out test split, and emits a side-by-side
+comparison table against phase 2's committed `baseline_metrics.json`. It deliberately does not
+regenerate the split: it expects phase 2's committed split files, so both runs see byte-identical
+images. `kaggle/phase4_kaggle_notebook.ipynb` enforces this rather than assuming it - it
+regenerates the split with the same seed and refuses to start training unless the result
+hash-matches phase 2's committed files, so a silent data change cannot be mistaken for an
+architecture effect.
+
+**Result:** trained on Kaggle (Tesla T4, early-stopped at epoch 73 of 100, patience=20, 59.3 min)
+on the identical 750/160/162 Czech split, evaluated on the identical held-out test split:
+
+| metric | YOLO11n (CNN, ~2.6M) | RT-DETR-L (transformer, ~32.8M) | Δ |
+|---|---|---|---|
+| mAP@50 | 0.3113 | 0.3098 | -0.0015 |
+| mAP@50-95 | 0.1070 | 0.1195 | +0.0125 |
+| mAP@75 | 0.0370 | 0.0632 | **+0.0262 (+70.8%)** |
+| mean precision | 0.3650 | 0.3778 | +0.0128 |
+| mean recall | 0.3562 | 0.3404 | -0.0158 |
+| training time | 13.4 min | 59.3 min | 4.4x |
+
+The headline metric says the two are tied; the strict-IoU metric says they are not. mAP@50 moves
+-0.5% while mAP@75 moves +70.8% - the signature of better box regression rather than better object
+finding, which is what RT-DETR's NMS-free direct box prediction would predict. An evaluation
+reporting only mAP@50 would have recorded this experiment as a wash.
+
+Two per-class findings needed the confusion matrices to reach, not the AP table. `pothole` AP50
+halves (0.1905 -> 0.0921), which reads as a detection failure but is not: at a fixed confidence
+threshold RT-DETR actually finds *more* potholes than the CNN (0.31 vs 0.19 correctly classified,
+0.58 vs 0.77 lost to background) while its pothole precision drops to 0.1138 from 0.2801. It detects
+them and cannot rank them - an operationally different problem with a different fix. And the obvious
+explanation for a transformer struggling on one class, data scarcity, is contradicted by Czech's own
+class distribution: `alligator_crack` is the rarest class (9.6% of objects) and *improved* +14.2%,
+while the more common `pothole` (11.4%) regressed. Full analysis in
+`runs/phase4/diagnosis_report.md`; metrics and confusion matrices in `runs/phase4/eval/`.
+
+The conclusion this supports is not that transformers are better here. A 12.6x larger model at 4.4x
+the training cost bought localization precision, not detection coverage, on a 1,072-image
+single-country dataset - which is a reason to keep the CNN for this deployment and revisit the
+choice if the data scales.
+
 ## Project layout
 
 ```
@@ -191,6 +248,7 @@ scripts/
   make_cross_country_split.py       # phase 3: merge source countries -> train/val/in_domain_test + per-target-country eval lists
   train_cross_country_baseline.py   # phase 3: train once, evaluate in-domain + every target country, comparison report
   diagnose_failures.py              # phase 3: IoU-matched failure diagnosis, annotated GT-vs-prediction images, brightness
+  train_transformer_baseline.py      # phase 4: RT-DETR fine-tune on phase 2's exact split + automatic CNN-vs-transformer comparison table
 data/
   zips/                   # gitignored - raw downloads
   raw/                    # gitignored - extracted per-country VOC data
@@ -208,9 +266,13 @@ runs/
   phase3/eval/                   # committed - phase 3: per-domain metrics, confusion matrices, cross_country_report.md
   phase3/failures/               # committed - phase 3: annotated worst-case images per target country, failures_report.md
   phase3/diagnosis_report.md     # committed - the phase-3 deliverable: cross-references phase 1 EDA to explain the drops
+  phase4/czech_rtdetr/           # committed - phase 4 RT-DETR training run: results.png, results.csv (weights/last.pt gitignored - 66MB)
+  phase4/eval/czech_rtdetr/      # committed - phase 4: transformer_report.md (incl. CNN comparison table), transformer_metrics.json, confusion matrices
+  phase4/diagnosis_report.md     # committed - the phase-4 deliverable: what the architecture change actually bought, and which explanations the data refutes
 kaggle/
   phase2_kaggle_notebook.ipynb      # phase 2 notebook (writes scripts, downloads, trains, evaluates)
   phase3_kaggle_notebook.ipynb      # phase 3 notebook (writes scripts, wired to the Kaggle Dataset cache)
+  phase4_kaggle_notebook.ipynb      # phase 4 notebook (regenerates phase 2's split + hash-verifies it matches before training RT-DETR)
   rdd2022_cache_builder.ipynb       # one-time notebook: builds the rdd2022-figshare-zip-cache Kaggle Dataset
 ```
 
@@ -219,7 +281,7 @@ kaggle/
 - [x] Phase 1 - data setup and cross-country profiling
 - [x] Phase 2 - CNN baseline (YOLO11, single-country training) - Czech: mAP@50=0.3113
 - [x] Phase 3 - cross-country distribution-shift diagnosis - in-domain mAP@50=0.520 vs. targets 0.069-0.432, root-caused (not just measured) per target country in `runs/phase3/diagnosis_report.md`
-- [ ] Phase 4 - transformer detector (RT-DETR) fine-tune and architecture comparison
+- [x] Phase 4 - transformer detector (RT-DETR) fine-tune and architecture comparison - mAP@50 tied (0.3098 vs 0.3113) but mAP@75 +70.8%, on a byte-identical split; per-class regressions root-caused in `runs/phase4/diagnosis_report.md`
 - [ ] Phase 5 - Docker + CI/CD deployment with structured monitoring
 - [ ] Phase 6 - deliberately induced + resolved production incident, postmortem
 - [ ] Phase 7 - Model Card, public release, resume narrative

@@ -7,3 +7,7 @@ data/zips/
 data/raw/
 data/processed/
 data/manifest.csv
+
+# phase 4 RT-DETR checkpoints are 66MB each; best.pt is committed for reproducing the
+# eval, last.pt is redundant for that and would triple the repo size.
+runs/phase4/czech_rtdetr/weights/last.pt
