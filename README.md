@@ -37,7 +37,10 @@ country's folder into `data/raw/<country>/` so the next steps don't care about t
 layout. Safe to re-run - skips the download/verify/extract steps that already succeeded. Originally
 this pulled seven per-country zips directly from Sekilab's own S3 bucket, but that bucket started
 returning 403 Forbidden on every file (2026-09-16) - see the script's docstring for the full story.
-Expect it to take a while over a normal home connection; fine to run in the background.
+Expect it to take a while over a normal home connection; fine to run in the background. On Kaggle,
+this (and `extract_convert_per_country.py` below) will additionally check `/kaggle/input/` for a
+pre-built Dataset cache before hitting FigShare at all - see the "Kaggle Dataset caching" note under
+phase 3.
 
 `convert_voc_to_yolo.py` converts PASCAL VOC XML annotations to YOLO format and builds
 `data/manifest.csv` (one row per converted image, tagged with its country - this is what makes the
@@ -93,38 +96,129 @@ split of Czech's 1,072 images, evaluated on the held-out test split:
 
 Per-class AP50 ranges from 0.45 (`longitudinal_crack`, the best-represented class in the test
 split) down to 0.19 (`pothole`, the least-represented) - the class-imbalance pattern phase 3's
-cross-country experiment will need to account for. Full per-class breakdown, confusion matrices,
+cross-country experiment needed to account for. Full per-class breakdown, confusion matrices,
 and training curves in `runs/detect/val/baseline_report.md`.
+
+## Phase 3: cross-country distribution-shift diagnosis
+
+```bash
+python scripts/make_cross_country_split.py --seed 42
+
+python scripts/train_cross_country_baseline.py \
+    --data data/splits/cross_country/dataset.yaml \
+    --model yolo11n.pt \
+    --epochs 100 \
+    --imgsz 640 \
+    --batch 16 \
+    --seed 42
+
+python scripts/diagnose_failures.py \
+    --weights runs/phase3/cross_country_baseline/weights/best.pt \
+    --split-dir data/splits/cross_country \
+    --top-n 6 \
+    --conf 0.25 \
+    --iou 0.5
+```
+
+Phase 2 established a same-country baseline. Phase 3 asks the harder question: how much worse does
+it get on a country the model never trained on, and *why*.
+
+`make_cross_country_split.py` merges three source countries (Japan, India, Czech - keeping phase
+2's Czech data in the training mix rather than discarding it) into a 70/15/15 train/val/
+in_domain_test split (seed=42, shuffled across countries so no split accidentally ends up all one
+country), and writes a separate full-image evaluation list for each of four held-out target
+countries (Norway, United_States, China_MotorBike, China_Drone) that never appear in training -
+China's motorbike- and drone-mounted captures are kept as two distinct targets rather than merged
+into one "China" number, since they're different equipment/altitude conditions.
+
+`train_cross_country_baseline.py` trains one YOLO11 model, then evaluates that *same* model on the
+in-domain held-out test split and on each target country through the identical `model.val()` code
+path, so every number in the table below is directly comparable.
+
+`diagnose_failures.py` IoU-matches predictions against ground truth per target country, ranks
+images by failure severity (missed + spurious + misclassified detections), and saves annotated
+GT-vs-prediction images for the worst cases along with per-image brightness - the evidence used to
+test (and rule out) the brightness hypothesis below.
+
+**Result:** trained on Kaggle (Tesla T4, 100 epochs, patience=20, 135 min) on 8,536 training images
+merged from Japan+India+Czech, evaluated on the in-domain held-out test split and on each target
+country:
+
+| domain | n images | mAP@50 | Δ vs in-domain |
+|---|---|---|---|
+| in_domain (fair baseline) | 1,830 | 0.5198 | - |
+| United_States | 4,805 | 0.4316 | -0.088 |
+| China_MotorBike | 1,934 | 0.2429 | -0.277 |
+| China_Drone | 1,919 | 0.2268 | -0.293 |
+| Norway | 2,914 | 0.0686 | -0.451 |
+
+The interesting part isn't the numbers, it's *why*. Cross-referencing against phase 1's
+`eda_report.md` rules out the leading hypothesis (brightness - Norway sits mid-pack at 140.3, while
+United_States, the target with the *smallest* drop, is the brightest country in the whole dataset)
+and finds a more mechanistic cause instead: Norway's collapse tracks its unique image geometry - the
+only country in the dataset that isn't square (mean aspect ratio 1.83 vs. 1.00 everywhere else) and
+by far the highest object density (3.85/image vs. 1.6-2.4 elsewhere), so resizing to the training
+`imgsz=640` distorts it far more than any other country. United_States (smallest drop) is the
+closest format match to training - its native 640x640 resolution exactly matches the training
+imgsz. The two China splits, whose image format already matches training, show a genuine
+content-domain gap instead. Pothole recall is the weakest class in every target country regardless
+of which failure mode applies. Full write-up in `runs/phase3/diagnosis_report.md`; per-domain
+metrics and confusion matrices in `runs/phase3/eval/`; annotated failure cases in
+`runs/phase3/failures/`.
+
+**Kaggle Dataset caching:** every phase that needs a fresh Kaggle kernel was re-downloading the same
+~12.35GB zip from scratch, since `/kaggle/working` doesn't persist across kernel sessions. A
+one-time kernel (`kaggle/rdd2022_cache_builder.ipynb`) downloads + MD5-verifies the zip once and
+turns its output into a private Kaggle Dataset. Along the way this surfaced a real Kaggle quirk
+worth documenting: "New Dataset from notebook output" recursively auto-extracts every zip it finds,
+including zips nested inside other zips - so the cache Dataset ended up holding a fully-extracted
+per-country directory tree rather than a re-downloadable zip. `download_rdd2022.py` and
+`extract_convert_per_country.py` both detect this automatically (`find_kaggle_cached_extracted_countries()`)
+and, when the Dataset is mounted, convert straight from it - skipping the FigShare download and the
+in-memory zip extraction entirely - falling back to the original path unchanged when no cache is
+present.
 
 ## Project layout
 
 ```
 scripts/
-  download_rdd2022.py            # phase 1: fetch combined zip (FigShare) + MD5 verify + extract + link per-country
-  convert_voc_to_yolo.py         # phase 1: VOC XML -> YOLO txt + manifest.csv
-  eda_report.py                  # phase 1: cross-country data profile (committed to git)
-  extract_convert_per_country.py # phase 1/2: Kaggle-only disk-quota-safe download+extract+convert, --countries filter
-  make_country_split.py          # phase 2: reproducible per-country train/val/test split
-  train_cnn_baseline.py          # phase 2: YOLO11 train + held-out-test evaluation + report
+  download_rdd2022.py               # phase 1: fetch combined zip (FigShare) + MD5 verify + extract + link per-country; checks Kaggle Dataset cache first
+  convert_voc_to_yolo.py            # phase 1: VOC XML -> YOLO txt + manifest.csv
+  eda_report.py                     # phase 1: cross-country data profile (committed to git)
+  extract_convert_per_country.py    # phase 1/2/3: Kaggle-only disk-quota-safe download+extract+convert, --countries filter, Kaggle Dataset cache fast path
+  make_country_split.py             # phase 2: reproducible per-country train/val/test split
+  train_cnn_baseline.py             # phase 2: YOLO11 train + held-out-test evaluation + report
+  make_cross_country_split.py       # phase 3: merge source countries -> train/val/in_domain_test + per-target-country eval lists
+  train_cross_country_baseline.py   # phase 3: train once, evaluate in-domain + every target country, comparison report
+  diagnose_failures.py              # phase 3: IoU-matched failure diagnosis, annotated GT-vs-prediction images, brightness
 data/
   zips/                   # gitignored - raw downloads
   raw/                    # gitignored - extracted per-country VOC data
-  processed/              # gitignored - converted YOLO images/labels
+  processed/               # gitignored - converted YOLO images/labels
   manifest.csv            # gitignored (regenerable, ~24k rows)
   eda_summary.csv         # committed - small, human-checkable summary table
-  eda_report.md           # committed - the phase-1 deliverable
-  eda_figures/            # committed - class/brightness/count charts per country
-  splits/<country>/       # committed - train/val/test .txt + dataset.yaml + split_config.json (phase 2+)
+  eda_report.md            # committed - the phase-1 deliverable
+  eda_figures/             # committed - class/brightness/count charts per country
+  splits/<country>/        # committed - train/val/test .txt + dataset.yaml + split_config.json (phase 2)
+  splits/cross_country/    # committed - phase 3: source train/val/in_domain_test + per-target-country eval lists + split_config.json
 runs/
   phase2/<country>_baseline/     # committed - training run output: weights/best.pt, results.png
   detect/val/                    # committed - held-out test eval: baseline_report.md, baseline_metrics.json, confusion matrices
+  phase3/cross_country_baseline/ # committed - phase 3 training run output: weights/best.pt, results.png, results.csv
+  phase3/eval/                   # committed - phase 3: per-domain metrics, confusion matrices, cross_country_report.md
+  phase3/failures/               # committed - phase 3: annotated worst-case images per target country, failures_report.md
+  phase3/diagnosis_report.md     # committed - the phase-3 deliverable: cross-references phase 1 EDA to explain the drops
+kaggle/
+  phase2_kaggle_notebook.ipynb      # phase 2 notebook (writes scripts, downloads, trains, evaluates)
+  phase3_kaggle_notebook.ipynb      # phase 3 notebook (writes scripts, wired to the Kaggle Dataset cache)
+  rdd2022_cache_builder.ipynb       # one-time notebook: builds the rdd2022-figshare-zip-cache Kaggle Dataset
 ```
 
 ## Roadmap status
 
 - [x] Phase 1 - data setup and cross-country profiling
 - [x] Phase 2 - CNN baseline (YOLO11, single-country training) - Czech: mAP@50=0.3113
-- [ ] Phase 3 - cross-country distribution-shift diagnosis and mitigation
+- [x] Phase 3 - cross-country distribution-shift diagnosis - in-domain mAP@50=0.520 vs. targets 0.069-0.432, root-caused (not just measured) per target country in `runs/phase3/diagnosis_report.md`
 - [ ] Phase 4 - transformer detector (RT-DETR) fine-tune and architecture comparison
 - [ ] Phase 5 - Docker + CI/CD deployment with structured monitoring
 - [ ] Phase 6 - deliberately induced + resolved production incident, postmortem
