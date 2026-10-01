@@ -1,0 +1,12 @@
+# Scrapes the api service's /metrics every 10s. 10s rather than Prometheus's 1-minute default
+# because this is a low-traffic demo deployment - a short scrape interval makes the Grafana
+# dashboard feel responsive when manually hitting /predict a few times to see it move, which
+# matters more here than it would for a production service with real steady-state traffic.
+global:
+  scrape_interval: 10s
+  evaluation_interval: 10s
+
+scrape_configs:
+  - job_name: defect-api
+    static_configs:
+      - targets: ["api:8000"]

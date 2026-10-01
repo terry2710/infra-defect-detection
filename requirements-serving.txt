@@ -1,0 +1,20 @@
+# Phase 5 serving/CI dependencies only - separate from requirements.txt (phase 1's data-prep
+# deps) because the API container and the data-prep venv have nothing in common and shipping
+# pandas/matplotlib inside the inference image, or torch/ultralytics inside a local data-prep
+# venv, would be dead weight either way.
+#
+# torch/torchvision/ultralytics pinned explicitly (not just left to ultralytics' own dependency
+# resolution) so a CI run six months from now builds the same image this was validated against,
+# rather than silently picking up whatever's newest on the day it happens to run.
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+prometheus-client==0.21.1
+pillow==11.1.0
+torch==2.14.1
+torchvision==0.29.1
+ultralytics==8.3.63
+
+# test-only, not needed at runtime but installed in the same CI step for simplicity
+pytest==8.3.4
+httpx==0.28.1

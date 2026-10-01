@@ -1,0 +1,100 @@
+# Phase 5 CI/CD: test the API against the real model weights, then build and smoke-test the
+# Docker image, then (only on a push to main, not on PRs) publish it to GHCR.
+#
+# This workflow is also where the Dockerfile gets its first real `docker build` - the sandbox it
+# was written in blocks every container registry at the network layer, so `docker build` could
+# never be run there (see the note at the top of the Dockerfile). GitHub-hosted runners have
+# normal internet access, so this is the actual first build, not a formality after local testing.
+name: CI
+
+# Quoted "on" rather than bare on: - under the YAML 1.1 rules a generic parser (and this repo's
+# own validation step, since GitHub's own workflow parser special-cases the bare form) follows,
+# an unquoted on/off/yes/no is a boolean, not a string key. GitHub's parser handles the bare form
+# fine, but quoting removes the ambiguity entirely rather than relying on that special case.
+"on":
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  test:
+    name: Test (pytest, real model weights)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install serving dependencies
+        run: pip install -r requirements-serving.txt
+
+      - name: Run tests
+        run: pytest tests/ -v
+
+  build:
+    name: Build image + smoke test
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t infra-defect-api:${{ github.sha }} .
+
+      - name: Smoke-test the container
+        run: |
+          docker run -d --name defect-api -p 8000:8000 infra-defect-api:${{ github.sha }}
+
+          # The model load happens during FastAPI's startup (see app/main.py's lifespan handler),
+          # so give the container a few seconds before treating a failed health check as real.
+          ok=""
+          for i in $(seq 1 20); do
+            if curl -sf http://localhost:8000/health | grep -q '"model_loaded":true'; then
+              ok=1
+              break
+            fi
+            sleep 3
+          done
+          if [ -z "$ok" ]; then
+            echo "::error::container never reported a healthy /health - dumping logs"
+            docker logs defect-api
+            exit 1
+          fi
+
+          curl -sf http://localhost:8000/metrics | grep -q '^http_requests_total' || {
+            echo "::error::/metrics did not expose http_requests_total"
+            docker logs defect-api
+            exit 1
+          }
+
+          docker logs defect-api
+          docker stop defect-api
+
+      - name: Log in to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag and push image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          IMAGE=$(echo "ghcr.io/${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          docker tag infra-defect-api:${{ github.sha }} "$IMAGE:${{ github.sha }}"
+          docker tag infra-defect-api:${{ github.sha }} "$IMAGE:latest"
+          docker push "$IMAGE:${{ github.sha }}"
+          docker push "$IMAGE:latest"

@@ -235,6 +235,56 @@ the training cost bought localization precision, not detection coverage, on a 1,
 single-country dataset - which is a reason to keep the CNN for this deployment and revisit the
 choice if the data scales.
 
+## Phase 5: containerized inference service, structured monitoring, CI/CD
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000     # local dev
+docker build -t infra-defect-api .                  # production image
+docker compose up                                   # api + Prometheus + Grafana
+pytest tests/ -v                                     # 8 passing, against real model weights
+```
+
+Phase 2 produced a model; phase 5 turns it into something that could actually be deployed and
+operated. The service wraps the Czech YOLO11n baseline from phase 2, not the phase 4 RT-DETR model
+- phase 4's own diagnosis concluded the transformer bought localization precision at 4.4x the
+training cost with no mAP@50 gain at this dataset size, so the CNN is the one this project actually
+recommends deploying.
+
+`app/` is the service: `inference.py` wraps the Ultralytics model behind a `DefectDetector` class
+(load once, predict many, typed `ModelNotLoadedError`/`InvalidImageError` instead of letting
+exceptions leak un-typed to the API layer); `main.py` exposes `GET /health` (503 if the model
+failed to load, rather than crashing the process), `POST /predict` (multipart image upload ->
+detections plus per-request latency), and `GET /metrics` (Prometheus exposition format);
+`logging_config.py` emits one JSON line per log record (request id, status, latency) instead of
+unstructured text; `metrics.py` defines the Prometheus series, including a
+`predict_requests_with_no_detections_total` counter specifically to catch a silently-broken model
+that keeps returning HTTP 200 with an empty detection list.
+
+`tests/test_api.py` runs the full FastAPI app in-process (`TestClient`, a real ASGI lifespan - the
+model genuinely loads from `runs/phase2/czech_baseline/weights/best.pt`) against a real phase-4
+mosaic image standing in for a road photo, and asserts response *shape* (valid class names, boxes
+within image bounds, confidence in [0,1]) rather than a specific detection count, since the image
+isn't a held-out eval sample. 8/8 passing against the real model weights.
+
+`Dockerfile` is a two-stage build (the builder stage installs dependencies to a throwaway prefix;
+the final image copies only the installed packages, `app/`, and the one model weight file, and runs
+as a non-root user). `docker-compose.yml` adds Prometheus (scrapes `/metrics` every 10s) and Grafana
+(datasource and a 6-panel dashboard auto-provisioned from `monitoring/`, so `docker compose up`
+needs no manual clicking through Grafana's UI). `.github/workflows/ci.yml` runs the pytest suite,
+then builds the image and smoke-tests it (`/health` reports a loaded model, `/metrics` exposes
+`http_requests_total`), publishing to GHCR only on a push to `main` and only after both pass.
+
+**What's actually verified here, and what isn't.** This was built in a sandbox whose network policy
+blocks every container registry - Docker Hub, GHCR, GCR, and Quay all refused at the proxy level,
+confirmed against the proxy's own status endpoint rather than assumed - so `docker build` and
+`docker compose up` have never actually been executed against this Dockerfile and compose file,
+only reviewed (down to cross-checking which system libraries `opencv-python` needs at runtime
+against this sandbox's own, as an indirect signal rather than a real build log). The pytest suite,
+by contrast, *has* been run for real, in-process, against the real `best.pt` weights, and passes
+8/8. `.github/workflows/ci.yml`'s `build` job is deliberately where `docker build` runs for the
+first time, on a GitHub-hosted runner with normal registry access - that first green CI run, not
+this README, is what will actually prove the Docker/Prometheus/Grafana side works end to end.
+
 ## Project layout
 
 ```
@@ -274,6 +324,24 @@ kaggle/
   phase3_kaggle_notebook.ipynb      # phase 3 notebook (writes scripts, wired to the Kaggle Dataset cache)
   phase4_kaggle_notebook.ipynb      # phase 4 notebook (regenerates phase 2's split + hash-verifies it matches before training RT-DETR)
   rdd2022_cache_builder.ipynb       # one-time notebook: builds the rdd2022-figshare-zip-cache Kaggle Dataset
+app/
+  inference.py             # phase 5: DefectDetector - load-once Ultralytics wrapper, typed errors
+  main.py                  # phase 5: FastAPI app - /health, /predict, /metrics, request logging+timing middleware
+  logging_config.py        # phase 5: one-JSON-line-per-record structured logging
+  metrics.py               # phase 5: Prometheus Counter/Histogram definitions
+tests/
+  conftest.py              # phase 5: TestClient fixture, real model weights, phase-4 mosaic image standing in for a road photo
+  test_api.py              # phase 5: 8 tests - health, predict schema, error handling, metrics exposition
+monitoring/
+  prometheus.yml                                  # phase 5: scrape config for the api service
+  grafana/provisioning/datasources/datasource.yml # phase 5: auto-provisions the Prometheus datasource
+  grafana/provisioning/dashboards/dashboard.yml   # phase 5: auto-loads dashboard JSON on Grafana startup
+  grafana/dashboards/defect-api.json              # phase 5: 6-panel dashboard - request rate, error rate, latency, detections by class
+Dockerfile                 # phase 5: two-stage build, non-root user, serves runs/phase2's best.pt (never actually docker-built in-sandbox - see Phase 5 section)
+docker-compose.yml         # phase 5: api + Prometheus + Grafana, not yet run end-to-end (see Phase 5 section)
+.dockerignore               # phase 5
+requirements-serving.txt   # phase 5: pinned serving deps, separate from requirements.txt's phase-1 data-prep deps
+.github/workflows/ci.yml   # phase 5: pytest -> docker build + smoke test -> publish to GHCR (main only)
 ```
 
 ## Roadmap status
@@ -282,6 +350,6 @@ kaggle/
 - [x] Phase 2 - CNN baseline (YOLO11, single-country training) - Czech: mAP@50=0.3113
 - [x] Phase 3 - cross-country distribution-shift diagnosis - in-domain mAP@50=0.520 vs. targets 0.069-0.432, root-caused (not just measured) per target country in `runs/phase3/diagnosis_report.md`
 - [x] Phase 4 - transformer detector (RT-DETR) fine-tune and architecture comparison - mAP@50 tied (0.3098 vs 0.3113) but mAP@75 +70.8%, on a byte-identical split; per-class regressions root-caused in `runs/phase4/diagnosis_report.md`
-- [ ] Phase 5 - Docker + CI/CD deployment with structured monitoring
+- [ ] Phase 5 - Docker + CI/CD deployment with structured monitoring - app/tests/Dockerfile/compose/CI all written, pytest 8/8 passing against real model weights; Docker build/compose itself not yet run (this sandbox blocks all container registries) - pending the first green `.github/workflows/ci.yml` run, which is where `docker build` will actually execute for the first time
 - [ ] Phase 6 - deliberately induced + resolved production incident, postmortem
 - [ ] Phase 7 - Model Card, public release, resume narrative

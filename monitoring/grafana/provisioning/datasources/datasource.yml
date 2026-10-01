@@ -1,0 +1,12 @@
+# Auto-provisions the Prometheus datasource on Grafana startup, so "docker compose up" gives a
+# working dashboard with zero manual clicking through Grafana's UI - the whole point of
+# provisioning config over "here's a screenshot of the settings to recreate by hand".
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false

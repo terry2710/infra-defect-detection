@@ -1,0 +1,13 @@
+# Tells Grafana to auto-load any dashboard JSON file dropped in monitoring/grafana/dashboards/ -
+# so defect-api.json appears on startup without anyone importing it through the UI.
+apiVersion: 1
+
+providers:
+  - name: defect-api
+    orgId: 1
+    folder: ""
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/provisioning/dashboards/files
