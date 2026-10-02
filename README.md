@@ -285,6 +285,49 @@ by contrast, *has* been run for real, in-process, against the real `best.pt` wei
 first time, on a GitHub-hosted runner with normal registry access - that first green CI run, not
 this README, is what will actually prove the Docker/Prometheus/Grafana side works end to end.
 
+## Phase 6: a deliberately induced incident, and whether the monitoring actually catches it
+
+```bash
+docker compose up -d
+./scripts/load_test.sh 30 2            # baseline traffic
+# inject: add CONF_THRESHOLD=0.97 under the api service's environment: in docker-compose.yml
+docker compose up -d                    # recreate api with the bad config
+./scripts/load_test.sh 40 3            # incident-period traffic
+# diagnose, then revert the environment override and re-deploy
+docker compose up -d
+```
+
+Phase 5 built the monitoring; phase 6 tests whether it was worth building. Rather than writing a
+hypothetical "here's what our dashboard would catch" paragraph, this phase deliberately broke the
+running service in a way designed to be invisible to every standard health signal, then used only
+the dashboard to find it - the same thing a "walk me through an incident you handled" interview
+question is actually asking for, done for real instead of narrated from memory.
+
+The injected failure: a bad deploy sets `CONF_THRESHOLD` to 0.97 instead of 0.25. The model keeps
+loading, `/health` keeps returning 200 with `model_loaded: true`, every `/predict` request keeps
+returning HTTP 200 - and every single one comes back with zero detections, because 0.97 is far
+above any confidence this model actually reaches. Error rate, latency, and the `/health` payload
+all read as "nothing is wrong." The only signal that moved was
+`predict_requests_with_no_detections_total` - the metric phase 5 added specifically for this
+failure mode - which tracked 1:1 with total `/predict` traffic for the full incident window,
+visibly diverging from the pattern it should show (most requests finding something) the moment
+the bad config took effect.
+
+Root cause was confirmed in under a minute once the environment was stable (`docker compose logs`
+plus `docker compose exec api env`, both pointing at `CONF_THRESHOLD=0.97`); fixing it was a
+one-line config revert. Recorded MTTR was 1h 06m, but nearly all of that went into getting the
+local Docker/Grafana stack running for real for the first time - two bugs in phase 5's own
+`.dockerignore` and `docker-compose.yml` surfaced the moment they were actually exercised rather
+than just reviewed, which is its own small confirmation of that phase's "never actually built"
+caveat. Full timeline, root cause, detection reasoning, and action items in `POSTMORTEM.md`.
+
+Also surfaced a methodology bug worth keeping: the image originally chosen for
+`scripts/load_test.sh`'s synthetic traffic - an Ultralytics training-visualization mosaic, not a
+real photo - produced zero detections even at the normal threshold, which would have silently made
+the "before" and "during" states of this drill indistinguishable. Caught by checking `/metrics`
+directly rather than trusting the dashboard at a glance; the fixture was swapped for a real photo
+verified to detect correctly first. Documented in `POSTMORTEM.md`'s "Lessons learned" section.
+
 ## Project layout
 
 ```
@@ -299,6 +342,7 @@ scripts/
   train_cross_country_baseline.py   # phase 3: train once, evaluate in-domain + every target country, comparison report
   diagnose_failures.py              # phase 3: IoU-matched failure diagnosis, annotated GT-vs-prediction images, brightness
   train_transformer_baseline.py      # phase 4: RT-DETR fine-tune on phase 2's exact split + automatic CNN-vs-transformer comparison table
+  load_test.sh                       # phase 6: generates steady /predict traffic against the local stack, for both baseline and incident drills
 data/
   zips/                   # gitignored - raw downloads
   raw/                    # gitignored - extracted per-country VOC data
@@ -337,11 +381,12 @@ monitoring/
   grafana/provisioning/datasources/datasource.yml # phase 5: auto-provisions the Prometheus datasource
   grafana/provisioning/dashboards/dashboard.yml   # phase 5: auto-loads dashboard JSON on Grafana startup
   grafana/dashboards/defect-api.json              # phase 5: 6-panel dashboard - request rate, error rate, latency, detections by class
-Dockerfile                 # phase 5: two-stage build, non-root user, serves runs/phase2's best.pt (never actually docker-built in-sandbox - see Phase 5 section)
-docker-compose.yml         # phase 5: api + Prometheus + Grafana, not yet run end-to-end (see Phase 5 section)
+Dockerfile                 # phase 5: two-stage build, non-root user, serves runs/phase2's best.pt (docker build verified for real in phase 6, after two real bugs - see POSTMORTEM.md)
+docker-compose.yml         # phase 5: api + Prometheus + Grafana, verified end-to-end in phase 6's incident drill (see POSTMORTEM.md)
 .dockerignore               # phase 5
 requirements-serving.txt   # phase 5: pinned serving deps, separate from requirements.txt's phase-1 data-prep deps
 .github/workflows/ci.yml   # phase 5: pytest -> docker build + smoke test -> publish to GHCR (main only)
+POSTMORTEM.md              # phase 6: the incident drill write-up - timeline, root cause, detection reasoning, action items
 ```
 
 ## Roadmap status
@@ -350,6 +395,6 @@ requirements-serving.txt   # phase 5: pinned serving deps, separate from require
 - [x] Phase 2 - CNN baseline (YOLO11, single-country training) - Czech: mAP@50=0.3113
 - [x] Phase 3 - cross-country distribution-shift diagnosis - in-domain mAP@50=0.520 vs. targets 0.069-0.432, root-caused (not just measured) per target country in `runs/phase3/diagnosis_report.md`
 - [x] Phase 4 - transformer detector (RT-DETR) fine-tune and architecture comparison - mAP@50 tied (0.3098 vs 0.3113) but mAP@75 +70.8%, on a byte-identical split; per-class regressions root-caused in `runs/phase4/diagnosis_report.md`
-- [ ] Phase 5 - Docker + CI/CD deployment with structured monitoring - app/tests/Dockerfile/compose/CI all written, pytest 8/8 passing against real model weights; Docker build/compose itself not yet run (this sandbox blocks all container registries) - pending the first green `.github/workflows/ci.yml` run, which is where `docker build` will actually execute for the first time
-- [ ] Phase 6 - deliberately induced + resolved production incident, postmortem
+- [x] Phase 5 - Docker + CI/CD deployment with structured monitoring - app/tests/Dockerfile/compose/CI all written, pytest 8/8 passing against real model weights; Docker build and `docker compose up` (api + Prometheus + Grafana) verified for real locally - two real bugs (`.dockerignore` build-context exclusion, a Grafana nested-mount conflict) found and fixed in the process, see `POSTMORTEM.md`'s appendix; `.github/workflows/ci.yml`'s own first run on GitHub is still pending a push
+- [x] Phase 6 - deliberately induced + resolved production incident, postmortem - injected a silent model-failure (misconfigured `CONF_THRESHOLD`) against the real running stack; caught only by the business-semantic metric phase 5 built for this exact scenario, not by error rate/latency/health; root-caused, fixed, and written up in `POSTMORTEM.md`, MTTR 1h 06m
 - [ ] Phase 7 - Model Card, public release, resume narrative

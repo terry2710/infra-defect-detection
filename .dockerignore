@@ -1,7 +1,3 @@
-# Keep the build context (and therefore the image) to what app/main.py actually needs at
-# runtime: the app code, requirements-serving.txt, and the one model weight baked into the
-# Dockerfile below. Everything else here is training data, Kaggle notebooks, other phases'
-# eval artifacts, or local dev cruft that has no business being inside the serving image.
 .git
 .venv
 __pycache__
@@ -15,11 +11,14 @@ kaggle/
 scripts/
 Claude outputs/
 
-# All of runs/ except the one checkpoint the Dockerfile COPYs by its exact path - Docker doesn't
-# support negating a parent directory that's already excluded above with a glob, so the Dockerfile
-# instead COPYs that one file explicitly rather than COPYing runs/ wholesale and trying to carve
-# it back down here.
-runs/
+runs/*
+!runs/phase2
+runs/phase2/*
+!runs/phase2/czech_baseline
+runs/phase2/czech_baseline/*
+!runs/phase2/czech_baseline/weights
+runs/phase2/czech_baseline/weights/*
+!runs/phase2/czech_baseline/weights/best.pt
 
 requirements.txt
 requirements-serving.txt.orig
