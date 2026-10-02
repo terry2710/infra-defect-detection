@@ -328,6 +328,20 @@ the "before" and "during" states of this drill indistinguishable. Caught by chec
 directly rather than trusting the dashboard at a glance; the fixture was swapped for a real photo
 verified to detect correctly first. Documented in `POSTMORTEM.md`'s "Lessons learned" section.
 
+## Model Card
+
+A standalone `MODEL_CARD.md` documents the deployed model (YOLO11n,
+Czech-only) in the format hiring teams and reviewers actually expect:
+intended use and explicit out-of-scope uses, the RDD2022 training data and
+its unresolved license discrepancy (CC BY-SA 4.0 per the authors' GitHub
+vs. CC BY 4.0 per FigShare), the test-set evaluation results, the
+architecture-comparison and cross-country-generalization findings from
+phases 3-4 restated in model-card form, and the limitations already
+demonstrated by this project's own incident drill (`POSTMORTEM.md`) -
+including the fact that the cross-country numbers describe a *different*
+model than the one actually deployed, a distinction worth stating
+explicitly rather than letting a reader conflate the two.
+
 ## Project layout
 
 ```
@@ -387,6 +401,8 @@ docker-compose.yml         # phase 5: api + Prometheus + Grafana, verified end-t
 requirements-serving.txt   # phase 5: pinned serving deps, separate from requirements.txt's phase-1 data-prep deps
 .github/workflows/ci.yml   # phase 5: pytest -> docker build + smoke test -> publish to GHCR (main only)
 POSTMORTEM.md              # phase 6: the incident drill write-up - timeline, root cause, detection reasoning, action items
+MODEL_CARD.md               # phase 7: model card - intended use, training data + license caveat, evaluation results, limitations
+LICENSE                     # phase 7: MIT (code only - see MODEL_CARD.md for the training-data license caveat)
 ```
 
 ## Roadmap status
